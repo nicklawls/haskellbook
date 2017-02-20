@@ -19,6 +19,9 @@ executable haskellbook
   build-depends:       base >= 4.7 && < 5
                      , QuickCheck
                      , checkers
+                     , criterion
+                     , directory
+                     , time
                      , random
                      , transformers
                      , mtl

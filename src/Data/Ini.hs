@@ -4,7 +4,9 @@
 module Data.Ini where
 
 import           Control.Applicative
+import           Control.Monad
 import           Data.ByteString     (ByteString)
+import           Data.List           (isSuffixOf)
 import           Data.Char           (isAlpha)
 import           Data.Map            (Map)
 import qualified Data.Map            as M
@@ -13,6 +15,8 @@ import qualified Data.Text.IO        as TIO
 import           Test.Hspec
 import           Text.RawString.QQ
 import           Text.Trifecta
+import           System.IO
+import           System.Directory
 
 headerEx :: ByteString
 headerEx = "[blah]"
@@ -120,3 +124,18 @@ parseIni = do
 maybeSuccess :: Result a -> Maybe a
 maybeSuccess (Success a) = Just a
 maybeSuccess _ = Nothing
+
+
+main :: IO ()
+main = do
+    files <- getDirectoryContents "configs"
+    ascList <- forM (filter (".ini" `isSuffixOf`) files) $ \filePath -> do
+        contents <- readFile ("configs/" ++ filePath)
+        return (filePath, parseString parseIni mempty contents)
+    print (M.fromList ascList)
+    return ()
+
+
+
+
+
