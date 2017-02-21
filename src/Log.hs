@@ -1,4 +1,4 @@
-module Log () where
+module Log where
 
 
 import Text.Trifecta
@@ -9,8 +9,7 @@ import Data.Monoid
 import Data.Map (Map)
 import System.IO
 
--- time spent in each activity
--- average time spent per activity per day
+import qualified Data.Map as M
 
 
 data Log = Log Date [Entry]
@@ -33,23 +32,49 @@ type Day = Integer
 comment :: Parser ()
 comment = do
   string "--"
-  skipMany (notFollowedBy newline)
+  skipMany (notChar '\n')
+
+
+date :: Parser Date
+date = do
+  token (char '#')
+  d <- Date <$> (integer <* char '-') <*> (integer <* char '-') <*> integer'
+  skipMany (char ' ')
+  skipOptional comment
+  newline
+  return d
+
+entry :: Parser Entry
+entry =
+  Entry
+  <$> (integer <* char ':')
+  <*> integer <*> (notChar '\n' `manyTill` (optional comment *> newline))
+
 
 aLog :: Parser Log
-aLog = do
-  token (char '#')
-  date <- Date <$> (integer <* char '-') <*> (integer <* char '-') <*> integer
+aLog = Log <$> date <*> many entry <* skipMany (optional comment *> newline)
 
-  entries <- many $ do
-    hour <- integer <* char ':'
-    min <- integer
-    activity <- (alphaNum <|> oneOf "!@#$%^&*-=()_+:;" <|> space) `manyTill` newline
 
-    return $ Entry hour min activity
+-- time spent in each activity
+-- average time spent per activity per day
 
-  return $ Log date entries
+type LogMap = Map Date (Map Activity [(Start, End)])
+type Start = (Hour, Min)
+type End = (Hour, Min)
 
+
+mkLogMap :: [Log] -> LogMap
+mkLogMap logs =
+  M.fromList $
+    fmap (\(Log date entries) -> (date, error "map activities to intervals")) logs
+
+timeSpent :: LogMap -> [(Activity, Int)] -- Activity -> Time spent in minutes
+timeSpent = undefined
+
+avgTime :: LogMap -> [(Activity, Date, Int)] -- activit, date, time spent that day
+avgTime = undefined
 
 main :: IO ()
-main =
-  readFile "data.log" >>= return . parseString (many aLog) mempty >>= print
+main = do
+ Just logs <-parseFromFile (skipMany (optional comment *> newline) *> many aLog) "data.log"
+ print logs
